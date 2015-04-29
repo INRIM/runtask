@@ -17,11 +17,14 @@ Introduction
 **RunTask** is a python module implementing a coherent time task scheduler
 in a very simple way. The execution order of all controlled tasks is stricktly
 predictable and execution times are aligned to given reference times.
+The scheduling time can be speed up or slow down with respect to the system time.
+It can be also moved forward and backward by an offset addition. This can useful for debugging events with periods that are too long or too short to be seen in
+a comfortable way.
 
-Suppose to have tasks A, B, C that need to be run at the beginning of each
-minute, in that order. In addition, suppose to have tasks D, E, F that need
-to be run at the begining of each second, in that order. Moreover, since the
-beginning of each minute is coincident with the beginning of a second, it is
+An example. Suppose to have tasks A, B, C that need to be run at the beginning
+of each minute, in that order. In addition, suppose to have tasks D, E, F that
+need to be run at the begining of each second, in that order. Moreover, since
+the beginning of each minute is coincident with the beginning of a second, it is
 wanted that the task group A, B, C is run before the task group D, E, F.
 RunTask is designed to fulfill all these kind of requirements.
 
@@ -40,18 +43,20 @@ Features
 * All controlled tasks are run within the same thread, so with respect to each
   other, they are thread safe.
 * Tasks are callables with theirs arguments.
+* The speed and the offset of the scheduling time can be ajusted with respect
+  to the system time.
 * When a task execution time is delayed by cpu load more then the task period,
   that execution is skipped.
-* Each task execution can be single shot, periodic forever or periodic
+* Task execution can be single shot, periodic forever or periodic
   for a given number of runs.
 * Each task execution time is computed from a given reference time, so 
   the phase between different execution periods can be easily controlled.
 * Tasks having the same execution time are grouped by run period and
-  run from longest to shortest period. Within each group, tasks are
-  run following the task registration order.
+  executed from longest to shortest period. Within each group, tasks are
+  executed following the task registration order.
 
-Caveats
-=======
+Caveat
+======
 
 *RunTask* is not a preemptive scheduler, so all tasks are run sequentially
 when their run time is reached.

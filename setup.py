@@ -56,11 +56,11 @@ setup (
   author_email = AUTHOR_EMAIL,
   maintainer = AUTHOR,
   maintainer_email = AUTHOR_EMAIL,
-  url = 'http:/opendcf77.inrim.it/runtask',
-#  download_url = 'http://bitis.inrim.it/dist/bitis-' + VERSION + '.tar.gz',
+  url = 'http://opendcf77.inrim.it/runtask',
+  download_url = 'https://testpypi.python.org/simple/runtask',
   license = 'http://www.gnu.org/licenses/gpl.txt',
   platforms = ['Linux'],
-  description =  "RunTask is a coherent task scheduler",
+  description =  "RunTask is a coherent time task scheduler",
   long_description = """
   RunTask is a python module implementing a coherent task scheduler. The
   execution order of all controlled tasks is stricktly predictable and can
