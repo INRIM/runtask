@@ -14,4 +14,6 @@ Objects and methods
 .. autoclass:: RunTask
    :special-members:
    :members:
+   :exclude-members: runaln
+
 .. automethod:: RunTask

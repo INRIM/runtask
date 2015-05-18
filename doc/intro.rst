@@ -21,11 +21,11 @@ The scheduling time can be speed up or slow down with respect to the system time
 It can be also moved forward and backward by an offset addition. This can useful for debugging events with periods that are too long or too short to be seen in
 a comfortable way.
 
-An example. Suppose to have tasks A, B, C that need to be run at the beginning
-of each minute, in that order. In addition, suppose to have tasks D, E, F that
+An example. Suppose to have tasks A, B that need to be run at the beginning
+of each minute, in that order. In addition, suppose to have tasks C, D that
 need to be run at the begining of each second, in that order. Moreover, since
 the beginning of each minute is coincident with the beginning of a second, it is
-wanted that the task group A, B, C is run before the task group D, E, F.
+wanted that the task group A, B is run before the task group C, D.
 RunTask is designed to fulfill all these kind of requirements.
 
 This is the documentation for version |version|.
@@ -43,7 +43,7 @@ Features
 * All controlled tasks are run within the same thread, so with respect to each
   other, they are thread safe.
 * Tasks are callables with theirs arguments.
-* The speed and the offset of the scheduling time can be ajusted with respect
+* The speed and the offset of the scheduling time can be adjusted with respect
   to the system time.
 * When a task execution time is delayed by cpu load more then the task period,
   that execution is skipped.
@@ -67,6 +67,9 @@ non-blocking.
 The tasks controlled by RunTask are thread safe with respect to each other.
 Since, RunTask is instantiated by a main program, the controlled tasks
 are NOT thread safe with respect to the main program.
+
+Threads in python can be run only serially, so they do not benefit from
+multiprocessor architectures.
 
 Requirements
 ============

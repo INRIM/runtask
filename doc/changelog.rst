@@ -1,6 +1,44 @@
 Changes
 *******
 
+Release 0.3.0 (released 18-May-2015)
+====================================
+
+New features
+------------
+* Task run timing changed to timing generators.
+* New timing generator 'aligned': run tasks periodically aligned to a reference
+  time.
+* New timing generator 'now': run task periodically with immediate start.
+* New method runs_left: return the remaining number of times the task will be
+  run. If the task is run forever return -1.
+* New example (timecap.py): show different timing capabilities.
+
+Incompatible changes
+--------------------
+* task method: now all arguments have defaults and timing argument must be one
+  of the timing generators.
+* task_info method: now returns the count of task run times and a tuple with
+  all the arguments given at the call of 'task' method.
+
+Internals
+---------
+* Refactored RunTask init argument 'phase' to 'epoch'.
+* _time method changed to work with both normal system time and scaled and
+  shifted system time.
+* _run method: refactored 'task' to 'target' and changed for timing generators.
+
+Fixes
+-----
+* Eliminated tick drift from tasks run time.
+
+Documentation
+-------------
+* Added timing generators and runs_left method.
+* Added new timecap.py example.
+
+
+
 Release 0.2.0 (released 29-Apr-2015)
 ====================================
 
@@ -13,7 +51,7 @@ New features
   current run number. Otherwise, it returns -1.
 * Extended example to show counted runs and RunTask stopping. 
 
-Incompabible changes
+Incompatible changes
 --------------------
 * RunTask class, removed time argument. 
 * Method task_data changed name to task_info.

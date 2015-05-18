@@ -37,7 +37,7 @@ import time as tm      # time support
 
 #### define global variables
 
-__version__ = '0.2.0'
+__version__ = '0.3.0'
 __author__ = 'Fabrizio Pollastri <f.pollastri@inrim.it>'
 
 
@@ -46,16 +46,16 @@ __author__ = 'Fabrizio Pollastri <f.pollastri@inrim.it>'
 class RunTask:
     """ Implements a coherent time task scheduler. The scheduling time used
     by RunTask is computed from the system time multiplying it by the *speed*
-    factor (float) and adding the *phase* offset (float, unit: second). The
-    result is quantized by *tick* value (float, unit: second) to obtain the
-    scheduling time.
+    factor (float) and setting *epoch* (float, unit: second) as the beginning
+    of time. The result is quantized by *tick* value (float, unit: second) to
+    obtain the scheduling time.
     """
 
-    def __init__(self,speed=1.0,phase=0.0,tick=1.):
+    def __init__(self,speed=1.0,epoch=0.0,tick=1.):
 
         # save arguments
         self.speed = speed
-        self.phase = phase
+        self.epoch = epoch
         self.tick = tick
 
         # save system time base value
@@ -64,8 +64,12 @@ class RunTask:
         # times (unix time floats)
         self.runtime = None
 
+        # init timing arguments
+        self.timing_args = None
+
         # task list and run list
         self.tasks = {}
+        self.tasks_run_count = {}
         self.torun = []
 
         # root task
@@ -81,7 +85,7 @@ class RunTask:
                     return
                 # wait until next run time comes
                 self._time()
-                if self.root_task_run.wait(self.torun[0][1] - self.runtime):
+                if self.root_task_run.wait(self.torun[0][1] - self.time):
                     return
 
         # prepare thread for root task
@@ -92,11 +96,20 @@ class RunTask:
     def _time(self):
         """ Update the current scheduling time. """
 
-        if self.speed != 1.0:
-            self.runtime = self.speed * (tm.time()-self.systime_base)+self.phase
+        # presume the same time speed of system time
+        self.time = tm.time()
+        # if the required time speed is the same of system time ...
+        if self.speed == 1.0:
+            # if epoch != 0.0, set absolute start of time.
+            if self.epoch:
+                self.time = self.time() - self.systime_base + self.epoch
+        # if time speed is different from system time speed, compute a new 
+        # time, starting at self.epoch and flowing whith the given speed.
         else:
-            self.runtime = tm.time() + self.phase
-        self.runtime = self.runtime - mt.fmod(self.runtime,self.tick)
+            self.time = self.speed * (self.time - self.systime_base) \
+                + self.epoch
+        # runtime is quantized by tick value
+        self.runtime = self.time - mt.fmod(self.time,self.tick)
 
 
     def _run(self):
@@ -104,30 +117,28 @@ class RunTask:
 
         # run each task that has reached its run time
         runned = 0
-        for self.task_id, self.truntime in self.torun:
-            if self.truntime <= self.runtime:
-                task,args,kargs,period,phase,runs = self.tasks[self.task_id]
+        for self.task_id, self.task_runtime in self.torun:
+            # if current task has reached the run time ...
+            if self.task_runtime <= self.runtime:
+                target,args,kargs,timing,timing_args,worker = \
+                    self.tasks[self.task_id]
                 if args:
                     if kargs:
-                        task(*args,**kargs)
+                        target(*args,**kargs)
                     else:
-                        task(*args)
+                        target(*args)
                 else:
                     if kargs:
-                        task(**kargs)
+                        target(**kargs)
                     else:
-                        task()
-                
-                # if required, do runs count down
-                if runs > 0:
-                    runs = runs - 1
-                    self.tasks[self.task_id] = task,args,kargs,period,phase,runs
-                # if task has a next run, queue it.
-                if runs:
-                    next_run_time = self.runtime + period  \
-                        - mt.fmod(self.runtime - phase,period)
+                        target()
+                next_run_time = next(timing)
+                # if task has a next run, queue it
+                if next_run_time:
                     self.torun.append((self.task_id,next_run_time))
+                # count the tasks that are runned
                 runned = runned + 1
+            # the rest of tasks has not reached the run time, exit run loop.
             else:
                 break
 
@@ -145,69 +156,161 @@ class RunTask:
         self._time()
 
         # put all tasks on the run list, computing the first run time.
-        for task_id,(task,args,kargs,period,phase,count) \
+        for self.task_id,(task,args,kargs,timing,timing_args,worker) \
             in self.tasks.iteritems():
-            first_run = self.runtime+period-mt.fmod(self.runtime-phase,period)
-            self.torun.append((task_id,first_run))
+	    self.torun.append((self.task_id,next(timing)))
 
         # sort run list by ascending runtime
-        self.torun = sorted(self.torun,key=op.itemgetter(1))
+	self.torun = sorted(self.torun,key=op.itemgetter(1))
 
         # start thread
         self.root_task.start()
 
         # if required join thread
-        if join:
-            self.root_task.join()
+	if join:
+           self.root_task.join()
 
 
     def stop(self):
-        """ Stop execution of registered tasks. """
+	""" Stop execution of registered tasks. """
 
-        self.root_task_run.set()
+	self.root_task_run.set()
         self.root_task.join()
 
 
-    def task(self,task,args,kargs,period,phase=0.0,runs=-1):
+    def task(self,target=None,args=(),kargs={},timing=None,worker=None):
         """ Register a task to be run.
 
-          **task**: callable, a function, the task to be run.
+          **target**: callable, a function, a class method, the task to be run.
 
           **args**: list/tuple, function positional arguments.
 
           **kargs**: dictionary, function keyword arguments.
 
-          **period**: float, time elapse between task runs.
+          **timing**: a call to one of the timing methods, periodic, etc.
 
-          **phase**: float, the time offset from which an integer number
-          of *periods* are added to obtain the next task run time.
+          **worker**: at present, not used.
 
-          **runs**: integer, number of task runs. If -1, run task forever.
-
-        All times are in unix format, a float whose units are seconds from the
+       All times are in unix format, a float whose units are seconds from the
         beginning of epoch. 
         """
 
-        # save task to tasks list
-        task_id = len(self.tasks)
-        self.tasks[task_id] = (task,args,kargs,period,phase,runs)
+        # save task and its parameters to the tasks list
+        self.task_id = len(self.tasks)
+        self.tasks[self.task_id] = (target,args,kargs,timing,next(timing),worker)
 
-        return task_id
+        # init numbering of each task run
+        self.tasks_run_count[self.task_id] = 1
+
+        return self.task_id
 
 
     def task_info(self):
         """ Return current task information.
 
-        Return pattern (**id**, **runtime**, **runs**)
+        Return pattern (**id**, **runtime**, **run_count**, **task_args**)
 
           **id**: integer, the task identifier, it is the order of registration
           starting from zero. 
 
           **runtime**: float, the nominal task run time.
 
-          **runs**: integer, number of runs left. If -1, run for ever.
+          **run_count**: integer, number of current run, first run is #1.
+
+          **task_args**: tuple, all args saved by task method, (*target,
+          args, kargs, timing, timing_args, worker*). **timing_args** is the
+          tuple of the arguments given to the timing method specified in the
+          task method call.
         """
 
-        return self.task_id, self.truntime, self.tasks[self.task_id][5]
+        return self.task_id, self.task_runtime, \
+            self.tasks_run_count[self.task_id], self.tasks[self.task_id]
+
+
+    def runs_left(self):
+        """ Return the number of runs left excluding the current one.
+        If the task is run forever, return -1 . """
+
+        timing =  self.tasks[self.task_id][3].__name__
+        if timing == 'aligned':
+            runs = self.tasks[self.task_id][4][2]
+        elif timing is 'now':
+            runs = self.tasks[self.task_id][4][1]
+        else:
+            assert False, 'invalid timing argument: ' + str(timing)
+        # if task loops forever, return -1
+        if runs == -1:
+            return runs
+        # otherwise, return the runs left.
+        else:
+            return runs - self.tasks_run_count[self.task_id]
+
+
+    def aligned(self,period=1.0,phase=0.0,runs=-1):
+        """ Set a periodic timing. The timing period can be aligned to a
+        reference time. The task execution can be a single shot, a given
+        number of times or forever.
+
+          **period**: float (seconds), time elapse between task runs.
+
+          **phase**: float (seconds), the time offset from which an integer
+          number of *periods* are added to obtain the next task run time.
+
+          **runs**: integer, number of task runs. If -1, run task forever.
+
+        The first task run happens when the RunTask time reaches the
+        next integer multiple of **period** plus **phase**. 
+        """
+
+        # first call: return arguments
+        yield (period,phase,runs)
+ 
+        # second call: return the first run time.
+	yield self.runtime + period - mt.fmod(self.runtime,period) + phase
+
+        # subsequent calls: the next run time.
+        while True:
+
+            # count run
+            self.tasks_run_count[self.task_id] += 1
+
+            # if task has a next run, queue it and return the number of runs left
+            if self.tasks_run_count[self.task_id] - runs:
+                yield self.runtime + period - mt.fmod(self.runtime,period)+phase
+            # no next run, return zero
+            else:
+                yield 0
+
+
+    def now(self,period=1.0,runs=-1):
+        """ Set a periodic timing with immediate start.
+        The task execution can be a single shot, a given
+        number of times or forever.
+
+          **period**: float (seconds), time elapse between task runs.
+
+          **runs**: integer, number of task runs. If -1, run task forever.
+
+        Task run is aligned with a multiple of time tick.
+        """
+
+        # first call: return arguments
+        yield (period,runs)
+ 
+        # second call: return the first run time.
+	yield self.runtime
+
+        # subsequent calls: the next run time.
+        while True:
+
+            # count run
+            self.tasks_run_count[self.task_id] += 1
+
+            # if task has a next run, queue it and return the number of runs left
+            if self.tasks_run_count[self.task_id] - runs:
+                yield self.task_runtime + period
+            # no next run, return zero
+            else:
+                yield 0
 
 #### END
