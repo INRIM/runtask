@@ -18,7 +18,8 @@ Introduction
 in a very simple way. The execution order of all controlled tasks is stricktly
 predictable and execution times are aligned to given reference times.
 The scheduling time can be speed up or slow down with respect to the system time.
-It can be also moved forward and backward by an offset addition. This can useful for debugging events with periods that are too long or too short to be seen in
+It can be also moved forward and backward by an offset addition. This can useful
+for debugging events with periods that are too long or too short to be seen in
 a comfortable way.
 
 An example. Suppose to have tasks A, B that need to be run at the beginning
@@ -40,20 +41,23 @@ For any question, suggestion, contribution contact the author Fabrizio Pollastri
 Features
 ========
 
-* All controlled tasks are run within the same thread, so with respect to each
-  other, they are thread safe.
 * Tasks are callables with theirs arguments.
+* Task execution timing can be choosen among different schemes:
+  fixed period, random period, aligned to time origin or unaligned (immediate
+  execution). Periodic executions can be forever or for a given number
+  of runs, at least one (single shot).
 * The speed and the offset of the scheduling time can be adjusted with respect
   to the system time.
+* Each task execution time is computed from the scheduling time, so 
+  the phase between different execution periods can be easily controlled.
 * When a task execution time is delayed by cpu load more then the task period,
   that execution is skipped.
-* Task execution can be single shot, periodic forever or periodic
-  for a given number of runs.
-* Each task execution time is computed from a given reference time, so 
-  the phase between different execution periods can be easily controlled.
+* All controlled tasks are run within the same thread, so with respect to each
+  other, they are thread safe.
 * Tasks having the same execution time are grouped by run period and
   executed from longest to shortest period. Within each group, tasks are
   executed following the task registration order.
+* Any number of *RunTask* instances can be alive in the same program.
 
 Caveat
 ======
@@ -67,6 +71,9 @@ non-blocking.
 The tasks controlled by RunTask are thread safe with respect to each other.
 Since, RunTask is instantiated by a main program, the controlled tasks
 are NOT thread safe with respect to the main program.
+
+At present, *RunTask* has a static design: all task must be registered at
+program beginning and cannot be changed during execution.
 
 Threads in python can be run only serially, so they do not benefit from
 multiprocessor architectures.

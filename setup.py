@@ -62,7 +62,7 @@ setup (
   platforms = ['Linux'],
   description =  "RunTask is a coherent time task scheduler",
   long_description = """
-  RunTask is a python module implementing a coherent task scheduler. The
+  RunTask is a python module implementing a coherent time task scheduler. The
   execution order of all controlled tasks is stricktly predictable and can
   be aligned to a given reference time. """,
   classifiers = filter(None, classifiers.split("\n")),

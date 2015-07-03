@@ -1,6 +1,29 @@
 Changes
 *******
 
+Release 0.4.0 (released 04-Jul-2015)
+====================================
+
+New features
+------------
+* New timing generator 'uniform': run tasks with a random period with uniform
+  distribution.
+* Timing generators 'aligned' and 'now' accept fractional periods.
+* Updated timecap.py example for 'uniform' timing generator.
+
+Internals
+---------
+* Refactored method 'aligned': timing computation as closure.
+
+Fixes
+-----
+* Eliminated period drift from 'now' timing generator.
+
+Documentation
+-------------
+* Added 'uniform' timing generator.
+
+
 Release 0.3.0 (released 18-May-2015)
 ====================================
 

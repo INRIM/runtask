@@ -8,6 +8,7 @@ Contents
    :numbered:
 
    intro
+   exectiming
    examples
    moduleref
    changelog

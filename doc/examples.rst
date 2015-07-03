@@ -36,21 +36,29 @@ by RunTask
 
 Capabilities of the periodic timing
 -----------------------------------
-This example shows almost all capabilities of the periodic timing. Task #0
-is run 15 second after the beginning of each minute, forever. Task #1 is
-run immediately every 5 seconds.
+This example shows almost all capabilities of the periodic timing.
+Task #0 is run 15 second after the beginning of each minute, forever.
+Task #1 is run with period 19/3, phase=0.1, forever.
+Task #2 is run immediately every 5 seconds.
+Task #3 is run immediately with period 19/3, forever.
+Task #4 is run randomly with uniform distribution, period min 8 seconds
+and max 16 seconds, forever.
 
 .. literalinclude:: ../examples/timecap.py
     :linenos:
     :language: python
     :lines: 30-
 
-This an excerpt from example output. Task with 1 minute period has id=0.
-Task with 5 second period has id=1.
+This an excerpt from example output.
  
 .. literalinclude:: ../examples/timecap.out
     :linenos:
 
-Task #1 that is run immediately, shows an initial run delay of about 0.02s
-due to the initial program setup. Since the time has tick=0.1, task #1 starts
-on a random time aligned with a tick multiple.
+Since this example runs for one minute, task #0 appears only one time in the
+example output.
+
+Since the scheduler time has tick=0.01, the effective run time of each
+scheduled task must be a tick multiple. Under some conditions, this can
+produce a delay between the nominal runtime computed by the time generator
+and the effective runtime. This effect can be seen for tasks #1, #3 and #4
+where the nominal run time is rounded to the nearest and greather tick multiple.

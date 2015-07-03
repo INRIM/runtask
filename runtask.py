@@ -37,7 +37,7 @@ import time as tm      # time support
 
 #### define global variables
 
-__version__ = '0.3.0'
+__version__ = '0.4.0'
 __author__ = 'Fabrizio Pollastri <f.pollastri@inrim.it>'
 
 
@@ -191,13 +191,13 @@ class RunTask:
 
           **worker**: at present, not used.
 
-       All times are in unix format, a float whose units are seconds from the
+        All times are in unix format, a float whose units are seconds from the
         beginning of epoch. 
         """
 
         # save task and its parameters to the tasks list
         self.task_id = len(self.tasks)
-        self.tasks[self.task_id] = (target,args,kargs,timing,next(timing),worker)
+        self.tasks[self.task_id] =(target,args,kargs,timing,next(timing),worker)
 
         # init numbering of each task run
         self.tasks_run_count[self.task_id] = 1
@@ -236,6 +236,8 @@ class RunTask:
             runs = self.tasks[self.task_id][4][2]
         elif timing is 'now':
             runs = self.tasks[self.task_id][4][1]
+        elif timing is 'uniform':
+            runs = self.tasks[self.task_id][4][2]
         else:
             assert False, 'invalid timing argument: ' + str(timing)
         # if task loops forever, return -1
@@ -247,11 +249,14 @@ class RunTask:
 
 
     def aligned(self,period=1.0,phase=0.0,runs=-1):
-        """ Set a periodic timing. The timing period can be aligned to a
-        reference time. The task execution can be a single shot, a given
-        number of times or forever.
+        """ Timing generator. Set a periodic timing. The timing period can
+        be aligned to a reference time. The task execution can be a single
+        shot, a given number of times or forever.
 
-          **period**: float (seconds), time elapse between task runs.
+          **period**: float (seconds) or tuple (numerator seconds,
+          denominator seconds), time elapse between task runs.
+          If tuple, the period is a fractional number: the first is the
+          numerator, the second is the denominator.
 
           **phase**: float (seconds), the time offset from which an integer
           number of *periods* are added to obtain the next task run time.
@@ -262,11 +267,22 @@ class RunTask:
         next integer multiple of **period** plus **phase**. 
         """
 
+        # return the next run time aligned to an integer multiple of period.
+        def next_runtime():
+            # computation for fractional period
+            if type(period) is tuple:
+                period1 = float(period[0]) / period[1]
+                return self.runtime + period1 \
+                    - mt.fmod(mt.fmod(self.runtime,period[0]),period1) + phase
+            # computation for float/int period
+            else:
+                return self.runtime+period-mt.fmod(self.runtime,period)+phase
+
         # first call: return arguments
         yield (period,phase,runs)
  
         # second call: return the first run time.
-	yield self.runtime + period - mt.fmod(self.runtime,period) + phase
+	yield next_runtime()
 
         # subsequent calls: the next run time.
         while True:
@@ -274,20 +290,23 @@ class RunTask:
             # count run
             self.tasks_run_count[self.task_id] += 1
 
-            # if task has a next run, queue it and return the number of runs left
+            # if task has a next run, queue it and return the num of runs left
             if self.tasks_run_count[self.task_id] - runs:
-                yield self.runtime + period - mt.fmod(self.runtime,period)+phase
+                yield next_runtime()
             # no next run, return zero
             else:
                 yield 0
 
 
     def now(self,period=1.0,runs=-1):
-        """ Set a periodic timing with immediate start.
+        """ Timing generator. Set a periodic timing with immediate start.
         The task execution can be a single shot, a given
         number of times or forever.
 
-          **period**: float (seconds), time elapse between task runs.
+          **period**: float (seconds) or tuple (numerator seconds,
+          denominator seconds), time elapse between task runs.
+          If tuple, the period is a fractional number: the first is the
+          numerator, the second is the denominator.
 
           **runs**: integer, number of task runs. If -1, run task forever.
 
@@ -298,6 +317,7 @@ class RunTask:
         yield (period,runs)
  
         # second call: return the first run time.
+	start = self.runtime
 	yield self.runtime
 
         # subsequent calls: the next run time.
@@ -306,9 +326,55 @@ class RunTask:
             # count run
             self.tasks_run_count[self.task_id] += 1
 
-            # if task has a next run, queue it and return the number of runs left
+            # if task has a next run, queue it and return the num of runs left
             if self.tasks_run_count[self.task_id] - runs:
-                yield self.task_runtime + period
+                # computation for fractional period
+                if type(period) is tuple:
+                    period1 = float(period[0]) / period[1]
+                    yield self.runtime + period1 \
+                        - mt.fmod(mt.fmod(self.runtime-start,period[0]),period1)
+                # computation for float/int period
+                else:
+                    yield  self.runtime+period-mt.fmod(
+                        self.runtime - start,period)
+            # no next run, return zero
+            else:
+                yield 0
+
+
+    def uniform(self,period_min=1.0,period_max=10.0,runs=-1):
+        """ Timing generator. Set an execution timing aligned to the first
+        period and repeat period with a random unform distribution between
+        *period_min* and *period_max*. The task execution can be a single
+        shot, a given number of times or forever.
+
+          **period_min**: float (seconds), minimum of period execution time.
+
+          **period_max**: float (seconds), maximum of period execution time.
+
+          **runs**: integer, number of task runs. If -1, run task forever.
+
+        Task run is aligned with a multiple of time tick.
+        """
+
+        import random as rd
+
+        # first call: return arguments
+        yield (period_min,period_max,runs)
+ 
+        # second call: return the first run time.
+        period = rd.uniform(period_min,period_max)
+	yield self.runtime + period - mt.fmod(self.runtime,period)
+
+        # subsequent calls: the next run time.
+        while True:
+
+            # count run
+            self.tasks_run_count[self.task_id] += 1
+
+            # if task has a next run, queue it and return the num of runs left
+            if self.tasks_run_count[self.task_id] - runs:
+	        yield self.task_runtime + rd.uniform(period_min,period_max)
             # no next run, return zero
             else:
                 yield 0
