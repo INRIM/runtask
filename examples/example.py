@@ -37,27 +37,27 @@ sch = rt.RunTask(speed=1.0,tick=0.1)
 # a task printing run time and, if not forever, the runs left.
 def task(sch):
     now = tm.time()
-    task_id, runtime, run_count, task_args = sch.task_info()
+    task_id, last_runtime, run_count, task_args = sch.task_info()
     runs_left = sch.runs_left()
     if runs_left == -1:
-        print 'task','%d %12.3f %10.9f' % (task_id,runtime,now-runtime)
+        print 'task','%d %12.3f %10.9f' %(task_id,last_runtime,now-last_runtime)
     else:
         if runs_left == 1:
             print 'task','%d %12.3f %10.9f %d' \
-                % (task_id,runtime,now-runtime,runs_left), \
+                % (task_id,last_runtime,now-last_runtime,runs_left), \
                     'this is the last run'
         else:
             print 'task','%d %12.3f %10.9f %d' \
-                % (task_id,runtime,now-runtime,runs_left)
+                % (task_id,last_runtime,now-last_runtime,runs_left)
 
 
 # task every 5 seconds, epoch aligned, forever
-sch.task(task,[sch],{},sch.aligned(5.,0.0,-1))
+sch.task(task,([sch],{}),sch.aligned(5.,0.0,-1))
 
 # two tasks every second, half second aligned,
 # the first forever, the second 5 times.
-sch.task(task,[sch],{},sch.aligned(1.,0.5,-1))
-sch.task(task,[sch],{},sch.aligned(1.,0.5,5))
+sch.task(task,([sch],{}),sch.aligned(1.,0.5,-1))
+sch.task(task,([sch],{}),sch.aligned(1.,0.5,5))
 
 # print a start message and start
 print 'Schedule 3 tasks for 10 seconds (system time) then terminate.'

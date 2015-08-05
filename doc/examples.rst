@@ -62,3 +62,55 @@ scheduled task must be a tick multiple. Under some conditions, this can
 produce a delay between the nominal runtime computed by the time generator
 and the effective runtime. This effect can be seen for tasks #1, #3 and #4
 where the nominal run time is rounded to the nearest and greather tick multiple.
+
+
+Threading event
+---------------
+This example shows as a Event object from the threading module can be used
+to schedule the execution of a loop in the main program.
+The loop is run every second for 10 times.
+
+.. literalinclude:: ../examples/event.py
+    :linenos:
+    :language: python
+    :lines: 30-
+
+This an excerpt from example output.
+ 
+.. literalinclude:: ../examples/event.out
+    :linenos:
+
+
+Threading lock
+--------------
+This example shows as a Lock object from the threading module can be used
+to schedule the execution of a loop in the main program.
+The loop is run every second for 10 times.
+
+.. literalinclude:: ../examples/lock.py
+    :linenos:
+    :language: python
+    :lines: 30-
+
+This an excerpt from example output.
+ 
+.. literalinclude:: ../examples/lock.out
+    :linenos:
+
+
+Threading semaphore
+-------------------
+This example shows as a Semaphore object from the threading module can be used
+to schedule the execution of a loop in the main program.
+The loop is run every second for 10 times.
+
+.. literalinclude:: ../examples/semaphore.py
+    :linenos:
+    :language: python
+    :lines: 30-
+
+This an excerpt from example output.
+ 
+.. literalinclude:: ../examples/semaphore.out
+    :linenos:
+

@@ -8,6 +8,7 @@ Contents
    :numbered:
 
    intro
+   tasks
    exectiming
    examples
    moduleref

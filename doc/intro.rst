@@ -15,9 +15,13 @@ Introduction
 ============
 
 **RunTask** is a python module implementing a coherent time task scheduler
-in a very simple way. The execution order of all controlled tasks is stricktly
+in a very simple way. The tasks can be python callables (functions, methods)
+or synchronization objects from the threading module (Event, Lock, Semaphore,
+BoundedSemaphore).
+The execution order of all controlled tasks is stricktly
 predictable and execution times are aligned to given reference times.
-The scheduling time can be speed up or slow down with respect to the system time.
+The scheduling time can be speed up or slow down with respect to the system
+time.
 It can be also moved forward and backward by an offset addition. This can useful
 for debugging events with periods that are too long or too short to be seen in
 a comfortable way.
@@ -41,7 +45,8 @@ For any question, suggestion, contribution contact the author Fabrizio Pollastri
 Features
 ========
 
-* Tasks are callables with theirs arguments.
+* Tasks can be callables with theirs arguments or event, lock, semaphore,
+  bounded semaphore from the threading module.
 * Task execution timing can be choosen among different schemes:
   fixed period, random period, aligned to time origin or unaligned (immediate
   execution). Periodic executions can be forever or for a given number
@@ -74,6 +79,8 @@ are NOT thread safe with respect to the main program.
 
 At present, *RunTask* has a static design: all task must be registered at
 program beginning and cannot be changed during execution.
+
+Each task target can be registered only one time.
 
 Threads in python can be run only serially, so they do not benefit from
 multiprocessor architectures.

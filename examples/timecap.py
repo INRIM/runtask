@@ -54,25 +54,25 @@ def task(sch):
 # run task at each minute, 15 seconds after minute beginning, forever
 period = 1 * 60.         # (1 min = 1 min * 60 sec)
 phase = 15.              # (15 sec = 15 sec)
-sch.task(task,[sch],{},sch.aligned(period,phase))
+sch.task(task,([sch],{}),sch.aligned(period,phase))
 
 # run task with period = 19/3, phase=0.1, forever
 period = (19,3)
 phase = 0.1
-sch.task(task,[sch],{},sch.aligned(period,phase))
+sch.task(task,([sch],{}),sch.aligned(period,phase))
 
 # run task immediately with period = 5, forever
 period = 5.
-sch.task(task,[sch],{},sch.now(period))
+sch.task(task,([sch],{}),sch.now(period))
 
-# run task imediately with period = 11/2, forever
+# run task imediately with period = 19/3, forever
 period = (19,3)
-sch.task(task,[sch],{},sch.now(period))
+sch.task(task,([sch],{}),sch.now(period))
 
 # run task randomly with uniform distribution, min period 8, max period 16, forever
 period_min = 8 
 period_max = 16 
-sch.task(task,[sch],{},sch.uniform(period_min,period_max))
+sch.task(task,([sch],{}),sch.uniform(period_min,period_max))
 
 # print a start message and start
 print 'Schedule 5 tasks for 60 seconds (system time) then terminate.'

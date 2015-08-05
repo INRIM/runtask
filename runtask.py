@@ -31,13 +31,14 @@
 
 import math as mt      # mathematical support
 import operator as op  # itemgetter
-import threading as tg # multiple thread of run
+import threading as tg #-- 
+import thread          #- multiple thread of run
 import time as tm      # time support
 
 
 #### define global variables
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 __author__ = 'Fabrizio Pollastri <f.pollastri@inrim.it>'
 
 
@@ -69,8 +70,14 @@ class RunTask:
 
         # task list and run list
         self.tasks = {}
-        self.tasks_run_count = {}
+        self.run_counts = {}
         self.torun = []
+
+        # task access by target
+        self.id_by_target = {}
+
+        # task last runtime
+        self.last_runtimes = {}
 
         # root task
         def root_task(self):
@@ -120,24 +127,54 @@ class RunTask:
         for self.task_id, self.task_runtime in self.torun:
             # if current task has reached the run time ...
             if self.task_runtime <= self.runtime:
-                target,args,kargs,timing,timing_args,worker = \
+
+                # save current task runtime
+                self.last_runtimes[self.task_id] = self.task_runtime
+
+                # get task arguments
+                target,arguments,timing,timing_args,worker = \
                     self.tasks[self.task_id]
-                if args:
-                    if kargs:
-                        target(*args,**kargs)
+
+                # if task is a callable, run it.
+                if callable(target):
+                    args, kargs = arguments
+                    if args:
+                        if kargs:
+                            target(*args,**kargs)
+                        else:
+                            target(*args)
                     else:
-                        target(*args)
+                        if kargs:
+                            target(**kargs)
+                        else:
+                            target()
+
+                # if task is an Event flag, set or clear it as requested.
+                elif type(target) is tg._Event:
+                    if arguments:
+                        target.set()
+                    else:
+                        target.clear()
+
+                # if task is a Lock, Semaphore or BoundedSemaphore,
+                # acquire or release it as requested.
+                elif type(target) in (thread.LockType,tg._Semaphore,
+                    tg._BoundedSemaphore):
+                    if arguments:
+                        target.acquire(False)
+                    else:
+                        target.release()
+ 
                 else:
-                    if kargs:
-                        target(**kargs)
-                    else:
-                        target()
-                next_run_time = next(timing)
+                    assert False, 'invalid target type: ' + str(type(target))
+
                 # if task has a next run, queue it
+                next_run_time = next(timing)
                 if next_run_time:
                     self.torun.append((self.task_id,next_run_time))
                 # count the tasks that are runned
                 runned = runned + 1
+              
             # the rest of tasks has not reached the run time, exit run loop.
             else:
                 break
@@ -156,7 +193,7 @@ class RunTask:
         self._time()
 
         # put all tasks on the run list, computing the first run time.
-        for self.task_id,(task,args,kargs,timing,timing_args,worker) \
+        for self.task_id,(task,arguments,timing,timing_args,worker) \
             in self.tasks.iteritems():
 	    self.torun.append((self.task_id,next(timing)))
 
@@ -178,42 +215,68 @@ class RunTask:
         self.root_task.join()
 
 
-    def task(self,target=None,args=(),kargs={},timing=None,worker=None):
+    def task(self,target=None,arguments=None,timing=None,worker=None):
         """ Register a task to be run.
 
-          **target**: callable, a function, a class method, the task to be run.
+        *Case 1*: *target* is a callable, a function or a class method.
 
-          **args**: list/tuple, function positional arguments.
+          **target**: when the run time comes, *target* is called.
 
-          **kargs**: dictionary, function keyword arguments.
+          **arguments**: (**args,kargs**) where *args* are the function
+          positional arguments (list or tuple) and *kargs* are the function
+          keyword arguments (dictionary).
 
-          **timing**: a call to one of the timing methods, periodic, etc.
+        *Case 2*: *target* is a threading Event.
+
+          **target**: when the run time comes, the *target* flag is set or
+          cleared.
+
+          **arguments**: boolean, if true, the target flag is set. If false,
+          the target flag is cleared.
+
+        *Case 3*: *target* is a threading Lock, a Semaphore or a
+        BoundedSemaphore.
+
+          **target**: when the run time comes, the *target* object is acquired
+          or released.
+
+          **arguments**: boolean, if true, the *target* object is acquired in
+          non-bloking mode. If false, the *target* object is released.
+
+        Common arguments
+
+          **timing**: a call to one of the timing generators, periodic, etc.
 
           **worker**: at present, not used.
-
-        All times are in unix format, a float whose units are seconds from the
-        beginning of epoch. 
         """
 
         # save task and its parameters to the tasks list
         self.task_id = len(self.tasks)
-        self.tasks[self.task_id] =(target,args,kargs,timing,next(timing),worker)
+        self.tasks[self.task_id] =(target,arguments,timing,next(timing),worker)
+
+        # save access to task by its target
+        self.id_by_target[target] = self.task_id
 
         # init numbering of each task run
-        self.tasks_run_count[self.task_id] = 1
+        self.run_counts[self.task_id] = 0 
+
+        # init last runtime to never run
+        self.last_runtimes[self.task_id] = -1
 
         return self.task_id
 
 
-    def task_info(self):
-        """ Return current task information.
-
-        Return pattern (**id**, **runtime**, **run_count**, **task_args**)
+    def task_info(self,target=None):
+        """ Return information about a task registered into Runtask. If called
+        from inside the task itself, do not specify any *target* (target=None).
+        If called from another thread, specify the target of the wanted task.
+ 
+	Return pattern (**id**, **last_runtime**, **run_count**, **task_args**)
 
           **id**: integer, the task identifier, it is the order of registration
           starting from zero. 
 
-          **runtime**: float, the nominal task run time.
+          **last_runtime**: float, the last nominal task run time.
 
           **run_count**: integer, number of current run, first run is #1.
 
@@ -223,21 +286,37 @@ class RunTask:
           task method call.
         """
 
-        return self.task_id, self.task_runtime, \
-            self.tasks_run_count[self.task_id], self.tasks[self.task_id]
+        # if target is defined, get task id from it, else gt the current one.
+        if target:
+            task_id = self.id_by_target[target]
+        else:
+            task_id = self.task_id
+
+        return task_id, self.last_runtimes[task_id], \
+            self.run_counts[task_id], self.tasks[task_id]
 
 
-    def runs_left(self):
+    def runs_left(self,target=None):
         """ Return the number of runs left excluding the current one.
-        If the task is run forever, return -1 . """
+        If the task is run forever, return -1 .
+        If called from inside the task itself, do not specify any *target*
+        (target=None). If called from another thread, specify the target
+        of the wanted task.
+        """
 
-        timing =  self.tasks[self.task_id][3].__name__
+        # if target is defined, get task id from it, else gt the current one.
+        if target:
+            task_id = self.id_by_target[target]
+        else:
+            task_id = self.task_id
+
+        timing =  self.tasks[task_id][2].__name__
         if timing == 'aligned':
-            runs = self.tasks[self.task_id][4][2]
+            runs = self.tasks[task_id][3][2]
         elif timing is 'now':
-            runs = self.tasks[self.task_id][4][1]
+            runs = self.tasks[task_id][3][1]
         elif timing is 'uniform':
-            runs = self.tasks[self.task_id][4][2]
+            runs = self.tasks[task_id][3][2]
         else:
             assert False, 'invalid timing argument: ' + str(timing)
         # if task loops forever, return -1
@@ -245,7 +324,7 @@ class RunTask:
             return runs
         # otherwise, return the runs left.
         else:
-            return runs - self.tasks_run_count[self.task_id]
+            return runs - self.run_counts[task_id]
 
 
     def aligned(self,period=1.0,phase=0.0,runs=-1):
@@ -288,10 +367,10 @@ class RunTask:
         while True:
 
             # count run
-            self.tasks_run_count[self.task_id] += 1
+            self.run_counts[self.task_id] += 1
 
             # if task has a next run, queue it and return the num of runs left
-            if self.tasks_run_count[self.task_id] - runs:
+            if self.run_counts[self.task_id] - runs:
                 yield next_runtime()
             # no next run, return zero
             else:
@@ -324,10 +403,10 @@ class RunTask:
         while True:
 
             # count run
-            self.tasks_run_count[self.task_id] += 1
+            self.run_counts[self.task_id] += 1
 
             # if task has a next run, queue it and return the num of runs left
-            if self.tasks_run_count[self.task_id] - runs:
+            if self.run_counts[self.task_id] - runs:
                 # computation for fractional period
                 if type(period) is tuple:
                     period1 = float(period[0]) / period[1]
@@ -370,10 +449,10 @@ class RunTask:
         while True:
 
             # count run
-            self.tasks_run_count[self.task_id] += 1
+            self.run_counts[self.task_id] += 1
 
             # if task has a next run, queue it and return the num of runs left
-            if self.tasks_run_count[self.task_id] - runs:
+            if self.run_counts[self.task_id] - runs:
 	        yield self.task_runtime + rd.uniform(period_min,period_max)
             # no next run, return zero
             else:

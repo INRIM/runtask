@@ -32,7 +32,7 @@ same pourposes as above.
 
 To have a more ordered and efficient task execution, the scheduling time
 is designed to be discrete with elementary increments of the tick quantity,
-as can see from the second formula. Also the system time has a minimum
+as it can be seen from the second formula. Also the system time has a minimum
 increment tick, but this quantity is generally far lower (generally 1
 microsecond) than the scheduling time tick. So, the system time can be
 considered continuous with respect to the scheduling time.
@@ -85,7 +85,7 @@ All timing generators compute the next task execution time referred to a
 continuous scheduling time: the **nominal run time**. The scheduling time
 of *RunTask* is discrete, as seen above, with minimum increments of the tick
 quantity and the task is run when the last increment of the scheduling time
-reaches or goes over the nominal run time. This is the **effective run time**
+reaches or exceeds the nominal run time. This is the **effective run time**
 of the task. So there is a difference between the nominal run time and the
 effective run time that is always less or equal to the tick of the scheduling
 time.

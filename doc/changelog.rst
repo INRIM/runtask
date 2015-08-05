@@ -1,6 +1,31 @@
 Changes
 *******
 
+Release 0.5.0 (released 06-Aug-2015)
+====================================
+
+New features
+------------
+* New task types: Event, Lock, Semaphore, BoundedSemaphore from the threading
+  module.
+* Changed examples to work with incompatible changes.
+* Added examples for synchronization objects from the threading module.
+
+Incompatible changes
+--------------------
+* task method: now there is only one target arguments. If target requires more
+  than one argument, pass them as a tuple.
+
+Fixes
+-----
+* Methods task_info and runs_left now return correct data when called from
+  outside the inquired task.
+
+Documentation
+-------------
+* Added new task types.
+
+
 Release 0.4.0 (released 04-Jul-2015)
 ====================================
 
